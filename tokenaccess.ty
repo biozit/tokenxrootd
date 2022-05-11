@@ -1,0 +1,31 @@
+from esmond.api.client.perfsonar.post import MetadataPost, EventTypePost, EventTypeBulkPost
+
+args = {
+    "subject_type": "point-to-point",
+    "source": "198.17.101.66",
+    "destination": " 192.170.231.222",
+    "tool_name": "pscheduler/iperf3",
+    "measurement_agent": "10.10.0.2",
+    "input_source": "host1",
+    "input_destination": "host2",
+    # "time_duration": 30,
+    # "ip_transport_protocol": "tcp"
+}
+
+mp = MetadataPost('https://localhost/', username='pS_user',
+    api_key='api-key-generated-by-auth-database',
+    ssl_verify=False, timeout=5, **args)
+
+mp.add_event_type('throughput')
+mp.add_event_type('time-error-estimates')
+mp.add_event_type('histogram-ttl')
+mp.add_event_type('packet-loss-rate')
+mp.add_summary_type('packet-count-sent', 'aggregation', [3600, 86400])
+
+new_meta = mp.post_metadata()
+
+etb = EventTypeBulkPost('https://localhost/', username='pS_user',
+        api_key='api-key-generated-by-auth-database',
+        metadata_key=new_meta.metadata_key, ssl_verify=False)
+
+etb.add_data_point('time-error-estimates', 1397075053, 23)
