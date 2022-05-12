@@ -1,31 +1,40 @@
-from esmond.api.client.perfsonar.post import MetadataPost, EventTypePost, EventTypeBulkPost
+#!/usr/bin/python3
 
-args = {
-    "subject_type": "point-to-point",
-    "source": "198.17.101.66",
-    "destination": " 192.170.231.222",
-    "tool_name": "pscheduler/iperf3",
-    "measurement_agent": "10.10.0.2",
-    "input_source": "host1",
-    "input_destination": "host2",
-    # "time_duration": 30,
-    # "ip_transport_protocol": "tcp"
-}
+import scitokens
+import subprocess
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.backends import default_backend
 
-mp = MetadataPost('https://localhost/', username='pS_user',
-    api_key='api-key-generated-by-auth-database',
-    ssl_verify=False, timeout=5, **args)
+def executeCommandBD(com):
 
-mp.add_event_type('throughput')
-mp.add_event_type('time-error-estimates')
-mp.add_event_type('histogram-ttl')
-mp.add_event_type('packet-loss-rate')
-mp.add_summary_type('packet-count-sent', 'aggregation', [3600, 86400])
+        with open('out1.txt','w+') as fout:
+                with open('err1.txt','w+') as ferr:
+                        out=subprocess.call([com],stdout=fout,stderr=ferr,timeout=500,shell=True)
+                        # reset file to read from it
+                        fout.seek(0)
+                        # save output (if any) in variable
+                        output=fout.read()
 
-new_meta = mp.post_metadata()
+                        # reset file to read from it
+                        ferr.seek(0)
+                        #save errors (if any) in variable
+                        errors = ferr.read()
+                        return errors
 
-etb = EventTypeBulkPost('https://localhost/', username='pS_user',
-        api_key='api-key-generated-by-auth-database',
-        metadata_key=new_meta.metadata_key, ssl_verify=False)
+with open("/root/scitoken/jwtRS256.key", "r") as file_pointer:
+        private_key_contents = file_pointer.read()
 
-etb.add_data_point('time-error-estimates', 1397075053, 23)
+loaded_private_key = serialization.load_pem_private_key(
+        private_key_contents.encode(),
+        password=None, # Hey, it's a sample file committed to disk...
+        backend=default_backend()
+    )
+token = scitokens.SciToken(loaded_private_key)
+token.update_claims({"subject":"xrootd"});
+token.update_claims({"scope":"read:/osgconnect/"});
+token.update_claims({"ver":"scitoken:2.0"});
+
+serialized_token = token.serialize(issuer="https://osg-htc.org/monitoring")
+print(serialized_token.decode())
+
+executeCommandBD("curl -v -X PUT --upload-file /root/scitoken/data.img -H 'Authorization:" serialized_token.decode()"' https://host.example.com//path/to/directory/hello_world")
